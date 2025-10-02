@@ -11,6 +11,7 @@ function Camera() {
   const [photoCount, setPhotoCount] = useState(3); // default 3 foto
   const [photos, setPhotos] = useState([]); // simpan hasil foto sementara
   const [background, setBackground] = useState(null); // background custom
+  const [mode, setMode] = useState("auto"); // 🔹 mode foto: auto/manual
 
   // 🔹 Start camera
   const startCamera = async () => {
@@ -53,7 +54,7 @@ function Camera() {
     return canvas.toDataURL("image/png");
   };
 
-  // 🔹 Ambil foto sesuai jumlah
+  // 🔹 Ambil foto sesuai jumlah (auto)
   const startBooth = async () => {
     setTakingPhotos(true);
     let newPhotos = [];
@@ -114,9 +115,9 @@ function Camera() {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
-    const imgWidth = 1255; // kamu bisa atur lebar (misalnya A4 print 1800px)
+    const imgWidth = 1255; // kamu bisa atur lebar
     const imgHeight = 610; // tinggi tiap foto
-    const totalHeight = 2600; // tinggi total sesuai permintaan
+    const totalHeight = 2600; // tinggi total
     const topOffset = 250; // jarak dari atas sebelum foto pertama
 
     canvas.width = imgWidth;
@@ -132,9 +133,9 @@ function Camera() {
     // load semua foto
     const images = await Promise.all(photos.map((p) => loadImage(p)));
 
-    // gambar foto ke bawah dengan jarak offset
+    // gambar foto ke bawah
     images.forEach((img, i) => {
-      const yPos = topOffset + i * imgHeight; // geser 360px dari atas
+      const yPos = topOffset + i * imgHeight;
       ctx.drawImage(img, 0, yPos, imgWidth, imgHeight);
     });
 
@@ -143,12 +144,12 @@ function Camera() {
       const bgImg = await loadImage(background);
       ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
     } else {
-      // fallback background putih
-      ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 🔹 default pakai default-bg.png
+      const defaultBg = await loadImage("/default-bg.png");
+      ctx.drawImage(defaultBg, 0, 0, canvas.width, canvas.height);
     }
 
-    setFinalStrip(canvas.toDataURL("image/png")); // ✅ hasil langsung muncul
+    setFinalStrip(canvas.toDataURL("image/png"));
   };
 
   // 🔹 Upload background custom
@@ -173,6 +174,30 @@ function Camera() {
   return (
     <div style={{ textAlign: "center", marginTop: "20px" }}>
       <h2>📸 Photo Booth</h2>
+
+      {/* pilih mode */}
+      {!finalStrip && !takingPhotos && photos.length === 0 && (
+        <div style={{ marginBottom: "10px" }}>
+          <label>
+            <input
+              type="radio"
+              value="auto"
+              checked={mode === "auto"}
+              onChange={() => setMode("auto")}
+            />{" "}
+            Auto (3x foto otomatis)
+          </label>
+          <label style={{ marginLeft: "10px" }}>
+            <input
+              type="radio"
+              value="manual"
+              checked={mode === "manual"}
+              onChange={() => setMode("manual")}
+            />{" "}
+            Manual (klik ambil sendiri)
+          </label>
+        </div>
+      )}
 
       {/* opsi jumlah foto */}
       {!finalStrip && !takingPhotos && photos.length === 0 && (
@@ -263,6 +288,12 @@ function Camera() {
               <button onClick={() => retakePhoto(i)}>
                 Retake Foto {i + 1}
               </button>
+              {/* 🔹 Tambahin tombol download per foto */}
+              <a href={p} download={`photo-${i + 1}.png`}>
+                <button style={{ marginLeft: "10px" }}>
+                  Download Foto {i + 1}
+                </button>
+              </a>
             </div>
           ))}
           <button
@@ -293,9 +324,9 @@ function Camera() {
           <button
             onClick={() => {
               setFinalStrip(null);
-              setPhotos([]); // reset semua
+              setPhotos([]);
               stopCamera();
-              setTimeout(() => startCamera(), 300); // nyalain lagi
+              setTimeout(() => startCamera(), 300);
             }}
             style={{ margin: "10px" }}
           >
@@ -305,12 +336,28 @@ function Camera() {
       )}
 
       {/* tombol mulai */}
-      {!finalStrip && !takingPhotos && photos.length === 0 && (
+      {!finalStrip &&
+        !takingPhotos &&
+        photos.length === 0 &&
+        mode === "auto" && (
+          <button
+            onClick={startBooth}
+            style={{ marginTop: "20px", padding: "10px 20px" }}
+          >
+            Start Booth (Auto)
+          </button>
+        )}
+
+      {/* tombol manual */}
+      {!finalStrip && mode === "manual" && photos.length < photoCount && (
         <button
-          onClick={startBooth}
+          onClick={() => {
+            const photo = capturePhoto();
+            setPhotos((prev) => [...prev, photo]);
+          }}
           style={{ marginTop: "20px", padding: "10px 20px" }}
         >
-          Start Booth
+          Ambil Foto {photos.length + 1}
         </button>
       )}
     </div>
